@@ -1,0 +1,30 @@
+# Ignore build and dist folders
+build/
+dist/
+
+# Ignore spec files
+*.spec
+
+# Standard Python gitignore
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+.eggs/
+*.pyo
+*.pyd
+*.whl
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# py2exe specific
+*.manifest
+*.dll
