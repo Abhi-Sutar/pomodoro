@@ -1,17 +1,18 @@
 import tkinter as tk
+from tkinter import simpledialog
 import time
 import multiprocessing
+import argparse
 
 # Function to flash the screen
 def flash_screenRed(steps, interval):
     root = tk.Tk()
-    
     root.attributes("-fullscreen", True)
     root.attributes("-topmost", True)  # Ensure that the window stays on top
     root.configure(bg="red", highlightthickness=0)  # Set the background to transparent
     root.attributes("-alpha", 0.0)  # Set the transparency level (0.0 - 1.0)
     alpha = 0.0
-    step_size = (0.6 - 0.0) / steps
+    # step_size = (0.6 - 0.0) / steps
     for _ in range(steps):
         alpha = 0.15 if alpha == 0.5 else 0.5  # Toggle between two alpha values
         root.attributes("-alpha", alpha)
@@ -29,10 +30,11 @@ def background_task1(WorkTime):
         time.sleep(flash_interval)
         flash_screenRed(5, 500)
         break
+    print ("Work Time is over!")
+
 # Function to flash the screen
 def flash_screenGreen(steps, interval):
     root = tk.Tk()
-    
     root.attributes("-fullscreen", True)
     root.attributes("-topmost", True)  # Ensure that the window stays on top
     root.configure(bg="green", highlightthickness=0)  # Set the background to transparent
@@ -80,9 +82,6 @@ class TimerApp(tk.Tk):
         # Start the timer
         self.start_time = time.time()
         self.update_timer()
-        # self.after(500, self.destroy) 
-
-
 
     def update_timer(self):
         elapsed_time = time.time() - self.start_time
@@ -100,51 +99,53 @@ class TimerApp(tk.Tk):
         self.after(4970, self.update_timer)
 
 
-    
-
 if __name__ == "__main__":
-
     multiprocessing.freeze_support()
 
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Pomodoro Timer")
+    parser.add_argument("--worktime", type=int, help="Work time in minutes")
+    args = parser.parse_args()
 
-    WorkTime = 25
+    # If no command-line argument is provided, show a dialog box
+    if args.worktime is None:
+        root = tk.Tk()
+        root.withdraw()  # Hide the root window
+        WorkTime = simpledialog.askinteger("Input", "Enter work time in minutes:", minvalue=1, maxvalue=120)
+        if WorkTime is None:
+            print("No input provided. Exiting...")
+            exit()
+    else:
+        WorkTime = args.worktime
 
     BreakTime = 5
 
-
     # Create a new process for the background task
     background_process1 = multiprocessing.Process(target=background_task1, args=(WorkTime,))
-    
+
     # Set the daemon property to True so that the background process terminates when the main process terminates
     background_process1.daemon = True
 
     # Create a new process for the background task
     background_process2 = multiprocessing.Process(target=background_task2, args=(BreakTime,))
-    
-    # Set the daemon property to True so that the background process terminates when the main process terminates
     background_process2.daemon = True
-    
-    # Start the background process
-    timerWork = TimerApp(WorkTime,"white")
-    background_process1.start()
+
     
 
     try:
-        # Main application code can continue to execute here
         print("Main application code is running...")
+        # Start the background process
+        timerWork = TimerApp(WorkTime, "white")
+        background_process1.start()
+        print("Work timer started...")
         timerWork.mainloop()
-        
         background_process1.join()
 
-        timerBreak = TimerApp(BreakTime,"green")
-
-
+        timerBreak = TimerApp(BreakTime, "green")
         background_process2.start()
+        print("Break timer started...")
         timerBreak.mainloop()
         background_process2.join()
 
-        
-        
     except KeyboardInterrupt:
-        # Handle Ctrl+C gracefully
         print("Exiting...")
