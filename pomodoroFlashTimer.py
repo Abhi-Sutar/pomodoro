@@ -6,6 +6,7 @@ import argparse
 
 # Function to flash the screen
 def flash_screenRed(steps, interval):
+    print("Starting flash_screenRed...")
     root = tk.Tk()
     root.attributes("-fullscreen", True)
     root.attributes("-topmost", True)  # Ensure that the window stays on top
@@ -14,26 +15,35 @@ def flash_screenRed(steps, interval):
     alpha = 0.0
     # step_size = (0.6 - 0.0) / steps
     for _ in range(steps):
-        alpha = 0.15 if alpha == 0.5 else 0.5  # Toggle between two alpha values
+        alpha = 0.15 if alpha == 0.5 else 0.5
         root.attributes("-alpha", alpha)
         root.update()
-        time.sleep(interval / 1000)  # Convert milliseconds to seconds
-    root.after(interval, root.destroy)  # Close the window after 1 second
-    root.mainloop()
+        time.sleep(interval / 1000)
+    print("Flashing complete, destroying root...")
+    root.destroy()  # Direct destroy instead of using after()
+    print("flash_screenRed completed.")
 
 # Function for the background task
-def background_task1(WorkTime):
+def background_task1(WorkTime, stop_event):
     # Set the time interval after which the screen will flash (in seconds)
     flash_interval = WorkTime * 60
+    print(f"Background task for work started with interval: {flash_interval} seconds")
 
-    while True:
-        time.sleep(flash_interval)
+    # Wait for the time to elapse or for stop_event to be set
+    start_time = time.time()
+    while time.time() - start_time < flash_interval and not stop_event.is_set():
+        time.sleep(1)  # Check more frequently for stop_event
+    
+    # If stop_event hasn't been set yet, flash the screen
+    if not stop_event.is_set():
+        print("Flashing screen red...")
         flash_screenRed(5, 500)
-        break
-    print ("Work Time is over!")
+        
+    print("Work Time is over!")
 
 # Function to flash the screen
 def flash_screenGreen(steps, interval):
+    print("Starting flash_screenGreen...")
     root = tk.Tk()
     root.attributes("-fullscreen", True)
     root.attributes("-topmost", True)  # Ensure that the window stays on top
@@ -46,18 +56,26 @@ def flash_screenGreen(steps, interval):
         root.attributes("-alpha", alpha)
         root.update()
         time.sleep(interval / 1000)  # Convert milliseconds to seconds
-    root.after(interval, root.destroy)  # Close the window after 1 second
-    root.mainloop()
+    print("Flashing complete, destroying root...")
+    root.destroy()  # Direct destroy
+    print("flash_screenGreen completed.")
 
 # Function for the background task
-def background_task2(BreakTime):
-    # Set the time interval after which the screen will flash (in seconds)
+def background_task2(BreakTime, stop_event):
     flash_interval = BreakTime * 60
+    print(f"Background task for break started with interval: {flash_interval} seconds")
 
-    while True:
-        time.sleep(flash_interval)
+    # Wait for the time to elapse or for stop_event to be set
+    start_time = time.time()
+    while time.time() - start_time < flash_interval and not stop_event.is_set():
+        time.sleep(1)  # Check more frequently for stop_event
+    
+    # If stop_event hasn't been set yet, flash the screen
+    if not stop_event.is_set():
+        print("Flashing screen green...")
         flash_screenGreen(5, 500)
-        break
+        
+    print("Break Time is over!")
 
 
 class TimerApp(tk.Tk):
@@ -112,40 +130,62 @@ if __name__ == "__main__":
         root = tk.Tk()
         root.withdraw()  # Hide the root window
         WorkTime = simpledialog.askinteger("Input", "Enter work time in minutes:", minvalue=1, maxvalue=120)
+        root.destroy()  # Make sure to destroy the root window
         if WorkTime is None:
             print("No input provided. Exiting...")
             exit()
     else:
         WorkTime = args.worktime
 
-    BreakTime = 5
-
-    # Create a new process for the background task
-    background_process1 = multiprocessing.Process(target=background_task1, args=(WorkTime,))
-
-    # Set the daemon property to True so that the background process terminates when the main process terminates
-    background_process1.daemon = True
-
-    # Create a new process for the background task
-    background_process2 = multiprocessing.Process(target=background_task2, args=(BreakTime,))
-    background_process2.daemon = True
-
-    
+    BreakTime = 1
 
     try:
         print("Main application code is running...")
-        # Start the background process
-        timerWork = TimerApp(WorkTime, "white")
+        
+        # Create work timer objects
+        stop_event1 = multiprocessing.Event()
+        background_process1 = multiprocessing.Process(target=background_task1, args=(WorkTime, stop_event1))
+        background_process1.daemon = True
+        
+        # Start work session
+        print("Starting background process for work timer...")
         background_process1.start()
         print("Work timer started...")
+        timerWork = TimerApp(WorkTime, "white")
         timerWork.mainloop()
-        background_process1.join()
-
-        timerBreak = TimerApp(BreakTime, "green")
+        
+        # Clean up work session
+        print("Work timer finished, signaling background process to stop...")
+        stop_event1.set()
+        background_process1.join(timeout=2)  # Add timeout to prevent hanging
+        print("Background process for work has finished.")
+        
+        # Small delay between sessions
+        time.sleep(0.5)
+        
+        # Create break timer objects
+        stop_event2 = multiprocessing.Event()
+        background_process2 = multiprocessing.Process(target=background_task2, args=(BreakTime, stop_event2))
+        background_process2.daemon = True
+        
+        # Start break session
+        print("Starting background process for break...")
         background_process2.start()
         print("Break timer started...")
+        timerBreak = TimerApp(BreakTime, "green")
         timerBreak.mainloop()
-        background_process2.join()
+        
+        # Clean up break session
+        print("Break timer finished, signaling background process to stop...")
+        stop_event2.set()
+        background_process2.join(timeout=2)  # Add timeout to prevent hanging
+        print("Background process for break has finished.")
 
     except KeyboardInterrupt:
         print("Exiting...")
+        stop_event1.set() if 'stop_event1' in locals() else None
+        stop_event2.set() if 'stop_event2' in locals() else None
+        if 'background_process1' in locals() and background_process1.is_alive():
+            background_process1.terminate()
+        if 'background_process2' in locals() and background_process2.is_alive():
+            background_process2.terminate()
