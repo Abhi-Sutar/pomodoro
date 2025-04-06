@@ -57,11 +57,21 @@ jobs:
         
     - name: Get tag version
       id: get_version
-      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      run: |
+        if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+          # This is a tag-based trigger
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "IS_RELEASE=true" >> $GITHUB_OUTPUT
+        else
+          # This is a manual trigger
+          echo "VERSION=dev-$(date +'%Y%m%d%H%M')" >> $GITHUB_OUTPUT
+          echo "IS_RELEASE=false" >> $GITHUB_OUTPUT
+        fi
       shell: bash
       
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
+      if: steps.get_version.outputs.IS_RELEASE == 'true'
       with:
         files: |
           release/PomodoroFlashTimer.exe
@@ -82,3 +92,11 @@ jobs:
           - Timer will appear in the bottom-left corner of your screen
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v3
+      if: steps.get_version.outputs.IS_RELEASE == 'false'
+      with:
+        name: PomodoroFlashTimer-${{ steps.get_version.outputs.VERSION }}
+        path: release/
+        retention-days: 7
