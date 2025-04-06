@@ -1,0 +1,56 @@
+[MASTER]
+# Python files or modules to ignore
+ignore=CVS
+# Maximum depth for recursively analyzing directories
+recursive=yes
+# Files or directories to ignore completely
+ignore-patterns=.git,__pycache__,dist,build
+
+[MESSAGES CONTROL]
+# Disable specific messages/warnings
+disable=
+    C0111, # missing-docstring - Not strictly necessary for every function
+    R0903, # too-few-public-methods - Common in GUI classes like frames and widgets
+    C0103, # invalid-name - Tkinter often uses non-standard naming conventions (like master, root)
+    W0212, # protected-access - Sometimes needed with tkinter internals
+    R0914, # too-many-locals - GUI code often needs many variables for widget configuration
+    W0702, # bare-except - Sometimes useful for catching all errors in user interfaces
+    E1101, # no-member - pylint sometimes struggles with tkinter's dynamic attributes
+
+[FORMAT]
+# Maximum number of characters on a single line
+max-line-length=100
+# String used as indentation unit
+indent-string='    '
+# Expected indentation
+indent-after-paren=4
+
+[REPORTS]
+# Output format
+output-format=colorized
+# Tells whether to display a full report or only the warnings
+reports=yes
+# Template used to display messages
+msg-template={path}:{line}:{column}: {msg_id}: {msg} ({symbol})
+# Evaluation score, lower weight for GUI-specific issues
+evaluation=10.0 - ((float(5 * error + warning + refactor + convention) / statement) * 10)
+
+[BASIC]
+# Good variable names which should always be accepted
+good-names=i,j,k,ex,_,tk,id,ip,up,x,y
+
+[DESIGN]
+# Maximum number of arguments for function / method
+max-args=8
+# Maximum number of attributes for a class
+max-attributes=15
+# Minimum number of public methods for a class
+min-public-methods=1
+# Maximum number of public methods for a class
+max-public-methods=30
+
+[SIMILARITIES]
+# Minimum lines number of a similarity
+min-similarity-lines=5
+# Ignore imports when computing similarities
+ignore-imports=yes
