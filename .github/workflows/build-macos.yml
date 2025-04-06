@@ -101,7 +101,31 @@ jobs:
         
     - name: Build executable with macOS icon
       run: |
-        pyinstaller --windowed --name PomodoroFlashTimer --icon=./resources/pomodoro.icns --add-binary "/System/Library/Frameworks/Tcl.framework/Versions/8.6/Tcl:." --add-binary "/System/Library/Frameworks/Tk.framework/Versions/8.6/Tk:." pomodoroFlashTimer.py
+        # Find Tcl/Tk framework paths dynamically
+        TCL_FRAMEWORK=$(find /System/Library/Frameworks/Tcl.framework/Versions -type f -name "Tcl" | head -1 || echo "")
+        TK_FRAMEWORK=$(find /System/Library/Frameworks/Tk.framework/Versions -type f -name "Tk" | head -1 || echo "")
+        
+        # Debug output
+        echo "Found Tcl at: $TCL_FRAMEWORK"
+        echo "Found Tk at: $TK_FRAMEWORK"
+        
+        # Build command with frameworks if found
+        if [ -n "$TCL_FRAMEWORK" ] && [ -n "$TK_FRAMEWORK" ]; then
+          echo "Using detected Tcl/Tk frameworks"
+          pyinstaller --windowed --name PomodoroFlashTimer \
+            --icon=./resources/pomodoro.icns \
+            --add-binary "$TCL_FRAMEWORK:." \
+            --add-binary "$TK_FRAMEWORK:." \
+            pomodoroFlashTimer.py
+        else
+          echo "Frameworks not found, building without explicit Tcl/Tk paths"
+          # Try alternative approach
+          pyinstaller --windowed --name PomodoroFlashTimer \
+            --icon=./resources/pomodoro.icns \
+            --hidden-import tkinter \
+            --collect-submodules tkinter \
+            pomodoroFlashTimer.py
+        fi
       
     - name: Debug Info
       run: |
