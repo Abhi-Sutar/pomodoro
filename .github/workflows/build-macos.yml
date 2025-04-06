@@ -33,10 +33,7 @@ jobs:
           brew install python-tk@3.10
         fi
         
-    - name: Prepare macOS icon
-      run: |
-        pip install iconizer
-        python -c "from iconizer import convert; convert('./resources/pomodoro.ico', './resources/pomodoro.icns')"
+
         
     - name: Verify dependencies
       run: |
