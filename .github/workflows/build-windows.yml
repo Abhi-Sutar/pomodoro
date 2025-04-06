@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'  # Trigger on version tags
+  workflow_dispatch:  # Allow manual triggering
 
 jobs:
   build:
@@ -32,11 +33,18 @@ jobs:
       run: |
         pyinstaller --onefile --noconsole --name PomodoroFlashTimer --icon=./resources/pomodoro.ico pomodoroFlashTimer.py
       
+    - name: Debug Info
+      run: |
+        echo "Current directory: $(pwd)"
+        echo "Files in dist: $(ls -la dist)"
+        echo "Current user: $(whoami)"
+        echo "GitHub ref: $GITHUB_REF"
+      
     - name: Create release package
       run: |
-        mkdir release
-        cp dist/PomodoroFlashTimer.exe release/
-        cp README.md release/
+        mkdir -p release
+        copy dist\PomodoroFlashTimer.exe release\
+        copy README.md release\
         
     - name: Get tag version
       id: get_version
