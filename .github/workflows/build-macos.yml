@@ -101,10 +101,7 @@ jobs:
         
     - name: Build executable with macOS icon
       run: |
-        pyinstaller --windowed --name PomodoroFlashTimer --icon=./resources/pomodoro.icns \
-        --add-binary "/System/Library/Frameworks/Tcl.framework/Versions/8.6/Tcl:." \ 
-        --add-binary "/System/Library/Frameworks/Tk.framework/Versions/8.6/Tk:." \
-        pomodoroFlashTimer.py
+        pyinstaller --windowed --name PomodoroFlashTimer --icon=./resources/pomodoro.icns --add-binary "/System/Library/Frameworks/Tcl.framework/Versions/8.6/Tcl:." --add-binary "/System/Library/Frameworks/Tk.framework/Versions/8.6/Tk:." pomodoroFlashTimer.py
       
     - name: Debug Info
       run: |

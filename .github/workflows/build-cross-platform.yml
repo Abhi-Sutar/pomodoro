@@ -77,10 +77,7 @@ jobs:
         
     - name: Build executable
       run: |
-        pyinstaller --windowed --icon=resources/pomodoro.icns \
-        --add-binary "/System/Library/Frameworks/Tcl.framework/Versions/8.6/Tcl:." \
-        --add-binary "/System/Library/Frameworks/Tk.framework/Versions/8.6/Tk:." \
-        pomodoroFlashTimer.py
+        pyinstaller --windowed --icon=resources/pomodoro.icns --add-binary "/System/Library/Frameworks/Tcl.framework/Versions/8.6/Tcl:." --add-binary "/System/Library/Frameworks/Tk.framework/Versions/8.6/Tk:." pomodoroFlashTimer.py
 
       
     - name: Create release package
