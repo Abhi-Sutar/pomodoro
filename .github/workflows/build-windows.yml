@@ -35,15 +35,24 @@ jobs:
       
     - name: Debug Info
       run: |
-        echo "Current directory: $(pwd)"
-        echo "Files in dist: $(ls -la dist)"
-        echo "Current user: $(whoami)"
-        echo "GitHub ref: $GITHUB_REF"
+        echo "Current directory: $(Get-Location)"
+        echo "Files in dist directory:"
+        if (Test-Path -Path dist) {
+            Get-ChildItem -Path dist -Force
+        } else {
+            echo "dist directory does not exist"
+        }
+        echo "Current user: $env:USERNAME"
+        echo "GitHub ref: $env:GITHUB_REF"
+        if ($LASTEXITCODE -ne 0) {
+            echo "Command failed!"
+            exit 1
+        }
       
     - name: Create release package
       run: |
         mkdir -p release
-        copy dist\PomodoroFlashTimer.exe release\
+        copy -Path "dist\PomodoroFlashTimer.exe" -Destination "release\"
         copy README.md release\
         
     - name: Get tag version
