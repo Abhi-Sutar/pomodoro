@@ -77,7 +77,10 @@ jobs:
         prerelease: false
         body: |
           # Pomodoro Flash Timer ${{ steps.get_version.outputs.VERSION }}
-          
+
+          ## Platform
+            - Windows
+                      
           ## Installation
           - Download and run the executable
           - No installation required

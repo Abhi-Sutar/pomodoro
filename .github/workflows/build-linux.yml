@@ -80,6 +80,9 @@ jobs:
         prerelease: false
         body: |
           # Pomodoro Flash Timer ${{ steps.get_version.outputs.VERSION }} for Linux
+
+          ## Platform
+          - Linux
           
           ## Installation
           - Download the executable

@@ -99,6 +99,9 @@ jobs:
         body: |
           # Pomodoro Flash Timer ${{ steps.get_version.outputs.VERSION }} for macOS
           
+          ## Platform
+          - macOS
+          
           ## Installation
           - Download the executable
           - You may need to right-click and choose "Open" to bypass Gatekeeper
