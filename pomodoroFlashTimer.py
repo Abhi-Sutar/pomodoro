@@ -3,6 +3,7 @@ from tkinter import simpledialog
 import time
 import multiprocessing
 import argparse
+import sys
 
 def flash_screen(color, steps, interval):
     """Flash the screen with the specified color."""
@@ -16,8 +17,9 @@ def flash_screen(color, steps, interval):
     # Flash effect
     if color == "red":
         # Toggle alpha for red flash
+        alpha = 0.0
         for _ in range(steps):
-            alpha = 0.15 if root.attributes("-alpha") == 0.5 else 0.5
+            alpha = 0.15 if alpha == 0.5 else 0.5
             root.attributes("-alpha", alpha)
             root.update()
             time.sleep(interval / 1000)
@@ -115,47 +117,88 @@ def run_timer_session(duration, color, session_name):
     
     return stop_event, bg_process
 
-if __name__ == "__main__":
-    multiprocessing.freeze_support()
+def center_dialog(root_window):
+    """Ensure the root window is positioned for centered dialogs."""
+    # Get screen dimensions
+    screen_width = root_window.winfo_screenwidth()
+    screen_height = root_window.winfo_screenheight()
+    
+    # Set position to center of screen
+    x = (screen_width - 1) // 2
+    y = (screen_height - 1) // 2
+    root_window.geometry(f"+{x}+{y}")
 
-    # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="Pomodoro Timer")
-    parser.add_argument("--worktime", type=int, help="Work time in minutes")
-    parser.add_argument("--breaktime", type=int, help="Break time in minutes")
-    args = parser.parse_args()
-
-    # Default break time in minutes
-    default_break_time = 5
-
-    # Create a single root window for dialogs
+def get_user_input(title, prompt, default_value, min_value, max_value):
+    """Show dialog and get user input with positioning."""
     root = tk.Tk()
     root.withdraw()
-
-    # Get work time from command line or dialog
-    if args.worktime is None:
-        work_time = simpledialog.askinteger("Work Time", "Enter work time in minutes:", 
-                                           minvalue=1, maxvalue=120, initialvalue=25)
-        if work_time is None:
-            print("No work time provided. Exiting...")
-            root.destroy()
-            exit()
-    else:
-        work_time = args.worktime
-
-    # Get break time from command line or dialog
-    if args.breaktime is None:
-        break_time = simpledialog.askinteger("Break Time", "Enter break time in minutes:", 
-                                            minvalue=1, maxvalue=30, initialvalue=default_break_time)
-        if break_time is None:
-            print("No break time provided. Using default...")
-            break_time = default_break_time
-    else:
-        break_time = args.breaktime
-
-    # Clean up the root window
+    
+    # Ensure the dialog will be centered
+    center_dialog(root)
+    
+    # Use standard simpledialog but with proper positioning
+    value = simpledialog.askinteger(
+        title, prompt, 
+        initialvalue=default_value,
+        minvalue=min_value, 
+        maxvalue=max_value,
+        parent=root
+    )
+    
     root.destroy()
+    return value
 
+if __name__ == "__main__":
     try:
+        print("Starting Pomodoro Timer application...")
+        multiprocessing.freeze_support()
+
+        # Parse command-line arguments
+        parser = argparse.ArgumentParser(description="Pomodoro Timer")
+        parser.add_argument("--worktime", type=int, help="Work time in minutes")
+        parser.add_argument("--breaktime", type=int, help="Break time in minutes")
+        args = parser.parse_args()
+
+        # Default values
+        default_work_time = 25
+        default_break_time = 5
+
+        # Get work time
+        if args.worktime is None:
+            print("Displaying work time dialog...")
+            work_time = get_user_input(
+                "Work Time",
+                "Enter work time in minutes:",
+                default_work_time,
+                1,
+                120
+            )
+            
+            if work_time is None:
+                print("No work time provided. Exiting...")
+                sys.exit(0)
+        else:
+            work_time = args.worktime
+
+        # Get break time
+        if args.breaktime is None:
+            print("Displaying break time dialog...")
+            break_time = get_user_input(
+                "Break Time",
+                "Enter break time in minutes:",
+                default_break_time,
+                1,
+                30
+            )
+            
+            if break_time is None:
+                print("No break time provided. Using default...")
+                break_time = default_break_time
+        else:
+            break_time = args.breaktime
+
+        print(f"Starting Pomodoro with work time: {work_time} min, break time: {break_time} min")
+
         # Run work session
         work_stop_event, work_process = run_timer_session(work_time, "red", "Work")
         time.sleep(0.5)  # Small pause between sessions
@@ -163,14 +206,8 @@ if __name__ == "__main__":
         # Run break session
         break_stop_event, break_process = run_timer_session(break_time, "green", "Break")
         
-    except KeyboardInterrupt:
-        print("Exiting due to keyboard interrupt...")
-        # Clean up any active processes
-        for event, process in [(work_stop_event, work_process) 
-                              if 'work_stop_event' in locals() else (None, None),
-                              (break_stop_event, break_process)
-                              if 'break_stop_event' in locals() else (None, None)]:
-            if event:
-                event.set()
-            if process and process.is_alive():
-                process.terminate()
+    except Exception as e:
+        print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
+        input("Press Enter to exit...")
