@@ -33,7 +33,6 @@ jobs:
           brew install python-tk@3.10
         fi
         
-
         
     - name: Verify dependencies
       run: |
