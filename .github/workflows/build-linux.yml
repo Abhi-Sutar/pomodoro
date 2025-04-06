@@ -1,0 +1,106 @@
+name: Build Linux Executable
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        # Install tkinter for Linux
+        sudo apt-get update
+        sudo apt-get install -y python3-tk
+        
+    - name: Test tkinter availability
+      run: |
+        python -c "import tkinter; print('tkinter version:', tkinter.TkVersion)"
+        
+    - name: Build executable
+      run: |
+        pyinstaller --onefile --name PomodoroFlashTimer --icon=./resources/pomodoro.ico pomodoroFlashTimer.py
+      
+    - name: Debug Info
+      run: |
+        echo "Current directory: $(pwd)"
+        echo "Files in dist directory:"
+        if [ -d "dist" ]; then
+          ls -la dist
+        else
+          echo "dist directory does not exist"
+        fi
+        echo "Current user: $(whoami)"
+        echo "GitHub ref: $GITHUB_REF"
+      
+    - name: Create release package
+      run: |
+        mkdir -p release
+        cp dist/PomodoroFlashTimer release/
+        cp README.md release/
+        # Add execution permission to the binary
+        chmod +x release/PomodoroFlashTimer
+        
+    - name: Get tag version
+      id: get_version
+      run: |
+        if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+          # This is a tag-based trigger
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "IS_RELEASE=true" >> $GITHUB_OUTPUT
+        else
+          # This is a manual trigger
+          echo "VERSION=dev-$(date +'%Y%m%d%H%M')" >> $GITHUB_OUTPUT
+          echo "IS_RELEASE=false" >> $GITHUB_OUTPUT
+        fi
+      
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      if: steps.get_version.outputs.IS_RELEASE == 'true'
+      with:
+        files: |
+          release/PomodoroFlashTimer
+          release/README.md
+        name: Pomodoro Flash Timer ${{ steps.get_version.outputs.VERSION }} (Linux)
+        draft: false
+        prerelease: false
+        body: |
+          # Pomodoro Flash Timer ${{ steps.get_version.outputs.VERSION }} for Linux
+          
+          ## Installation
+          - Download the executable
+          - Make it executable with `chmod +x PomodoroFlashTimer`
+          - No installation required
+          
+          ## Usage
+          - Run the application in a graphical environment
+          - Enter work and break times when prompted
+          - Timer will appear in the bottom-left corner of your screen
+          
+          ## Requirements
+          - X11 or Wayland display server
+          - A desktop environment
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      if: steps.get_version.outputs.IS_RELEASE == 'false'
+      with:
+        name: PomodoroFlashTimer-Linux-${{ steps.get_version.outputs.VERSION }}
+        path: release/
+        retention-days: 7
