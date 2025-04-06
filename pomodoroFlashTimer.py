@@ -4,6 +4,7 @@ import time
 import multiprocessing
 import argparse
 import sys
+import traceback
 
 def flash_screen(color, steps, interval):
     """Flash the screen with the specified color."""
@@ -200,8 +201,26 @@ if __name__ == "__main__":
         # Run break session
         break_stop_event, break_process = run_timer_session(break_time, "green", "Break")
 
-    except Exception as e:
-        print(f"Error: {e}")
-        import traceback
+    except ValueError as e:
+        print(f"Value Error: {e} - Please check your inputs")
+        traceback.print_exc()
+        input("Press Enter to exit...")
+    except tk.TclError as e:
+        print(f"Tkinter Error: {e} - There was a problem with the user interface")
+        traceback.print_exc()
+        input("Press Enter to exit...")
+    except FileNotFoundError as e:
+        print(f"File Error: {e}")
+        traceback.print_exc()
+        input("Press Enter to exit...")
+    except KeyboardInterrupt:
+        print("\nProgram interrupted by user")
+        # Let KeyboardInterrupt pass through - no input() needed
+    except SystemExit:
+        # Let normal system exit pass through
+        pass
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        # Only catch other exceptions as a last resort to prevent crashes in the executable
+        print(f"Unexpected error: {e}")
         traceback.print_exc()
         input("Press Enter to exit...")
