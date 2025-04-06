@@ -44,10 +44,6 @@ jobs:
         }
         echo "Current user: $env:USERNAME"
         echo "GitHub ref: $env:GITHUB_REF"
-        if ($LASTEXITCODE -ne 0) {
-            echo "Command failed!"
-            exit 1
-        }
       
     - name: Create release package
       run: |
