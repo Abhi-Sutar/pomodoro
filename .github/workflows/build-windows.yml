@@ -6,8 +6,39 @@ on:
       - 'v*'  # Trigger on version tags
   workflow_dispatch:  # Allow manual triggering
 
+# Add this block to skip when build-all-platforms is running
+concurrency:
+    group: release-${{ github.ref }}
+    cancel-in-progress: true
+
 jobs:
+  check-workflow:
+    runs-on: ubuntu-latest
+    outputs:
+      should-run: ${{ steps.check.outputs.should-run }}
+    steps:
+      - id: check
+        name: Check if multi-platform workflow is running
+        run: |
+          # Check recent workflow runs to see if build-all-platforms is running
+          WORKFLOWS=$(curl -s \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs?event=${{ github.event_name }}&status=in_progress")
+          
+          ALL_PLATFORMS_RUNNING=$(echo "$WORKFLOWS" | jq '.workflow_runs[] | select(.name == "Build Multi-Platform Release") | .id' | wc -l)
+          
+          if [ "$ALL_PLATFORMS_RUNNING" -gt 0 ]; then
+            echo "Multi-platform workflow is running, skipping this workflow"
+            echo "should-run=false" >> $GITHUB_OUTPUT
+          else
+            echo "No multi-platform workflow detected, proceeding"
+            echo "should-run=true" >> $GITHUB_OUTPUT
+          fi
+
   build:
+    needs: check-workflow
+    if: needs.check-workflow.outputs.should-run == 'true'
     runs-on: windows-latest
     
     steps:
@@ -73,22 +104,11 @@ jobs:
           release/PomodoroFlashTimer.exe
           release/README.md
         name: Pomodoro Flash Timer ${{ steps.get_version.outputs.VERSION }}
+        tag_name: ${{ steps.get_version.outputs.VERSION }}
         draft: false
         prerelease: false
-        body: |
-          # Pomodoro Flash Timer ${{ steps.get_version.outputs.VERSION }}
-
-          ## Platform
-            - Windows
-                      
-          ## Installation
-          - Download and run the executable
-          - No installation required
-          
-          ## Usage
-          - Run the application
-          - Enter work and break times when prompted
-          - Timer will appear in the bottom-left corner of your screen
+        fail_on_unmatched_files: false  # Important: don't fail if release already exists
+        body_path: .github/release-notes.md  # Optional: use a shared release notes file
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -1,0 +1,184 @@
+name: Build Multi-Platform Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  # WINDOWS BUILD
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        
+    - name: Test tkinter availability
+      run: |
+        python -c "import tkinter; print('tkinter version:', tkinter.TkVersion)"
+        
+    - name: Build executable
+      run: |
+        pyinstaller --onefile --noconsole --name PomodoroFlashTimer --icon=./resources/pomodoro.ico pomodoroFlashTimer.py
+      
+    - name: Create release package
+      run: |
+        mkdir -p release
+        # Rename for clear platform identification
+        copy -Path "dist\PomodoroFlashTimer.exe" -Destination "release\PomodoroFlashTimer-Windows.exe"
+        
+    - name: Upload artifact for release job
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build
+        path: release/
+        retention-days: 1  # Short retention as these will be used by the release job
+
+  # MACOS BUILD
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller pillow
+        
+        # Ensure tkinter is available
+        if ! python -c "import tkinter" &> /dev/null; then
+          brew install python-tk@3.10
+        fi
+        
+    - name: Build executable
+      run: |
+        pyinstaller --onefile --windowed --name PomodoroFlashTimer pomodoroFlashTimer.py
+      
+    - name: Create release package
+      run: |
+        mkdir -p release
+        if [ -d "dist/PomodoroFlashTimer.app" ]; then
+          # If it's a macOS app bundle, create a zip
+          cd dist
+          zip -r ../release/PomodoroFlashTimer-macOS.zip PomodoroFlashTimer.app
+          cd ..
+        else
+          # If it's a standard executable
+          cp dist/PomodoroFlashTimer release/PomodoroFlashTimer-macOS
+          chmod +x release/PomodoroFlashTimer-macOS
+        fi
+        
+    - name: Upload artifact for release job
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-build
+        path: release/
+        retention-days: 1
+
+  # LINUX BUILD
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        # Install tkinter for Linux
+        sudo apt-get update
+        sudo apt-get install -y python3-tk
+        
+    - name: Build executable
+      run: |
+        pyinstaller --onefile --name PomodoroFlashTimer --icon=./resources/pomodoro.ico pomodoroFlashTimer.py
+      
+    - name: Create release package
+      run: |
+        mkdir -p release
+        cp dist/PomodoroFlashTimer release/PomodoroFlashTimer-Linux
+        chmod +x release/PomodoroFlashTimer-Linux
+        
+    - name: Upload artifact for release job
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-build
+        path: release/
+        retention-days: 1
+
+  # RELEASE CREATION
+  create-release:
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: all-platforms
+        
+    - name: Copy README for each platform
+      run: |
+        cp README.md all-platforms/windows-build/README-Windows.md
+        cp README.md all-platforms/macos-build/README-macOS.md
+        cp README.md all-platforms/linux-build/README-Linux.md
+      
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          all-platforms/windows-build/PomodoroFlashTimer-Windows.exe
+          all-platforms/windows-build/README-Windows.md
+          all-platforms/macos-build/PomodoroFlashTimer-macOS*
+          all-platforms/macos-build/README-macOS.md
+          all-platforms/linux-build/PomodoroFlashTimer-Linux
+          all-platforms/linux-build/README-Linux.md
+        name: Pomodoro Flash Timer ${{ steps.get_version.outputs.VERSION }}
+        tag_name: ${{ steps.get_version.outputs.VERSION }}
+        body: |
+          # Pomodoro Flash Timer ${{ steps.get_version.outputs.VERSION }}
+          
+          ## 🖥️ Windows
+          - Download `PomodoroFlashTimer-Windows.exe`
+          - No installation required - just run the executable
+          
+          ## 🍎 macOS
+          - Download `PomodoroFlashTimer-macOS.zip` or `PomodoroFlashTimer-macOS`
+          - You may need to right-click and choose "Open" to bypass Gatekeeper
+          
+          ## 🐧 Linux
+          - Download `PomodoroFlashTimer-Linux`
+          - Make executable with `chmod +x PomodoroFlashTimer-Linux`
+          - X11 or Wayland display server required
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
